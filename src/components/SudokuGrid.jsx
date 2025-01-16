@@ -1,6 +1,10 @@
+import { useState } from 'react'
 import SudokuCell from './SudokuCell'
 
 function SudokuGrid({ puzzle, locked, isGameOver, handleChange }) {
+    // État pour la cellule en cours de survol (-1 = aucune)
+    const [hoveredCell, setHoveredCell] = useState(-1)
+
     /**
      * Calcule les classes Tailwind supplémentaires pour bien marquer
      * les blocs 3x3 (et la bordure extérieure).
@@ -9,10 +13,10 @@ function SudokuGrid({ puzzle, locked, isGameOver, handleChange }) {
         const row = Math.floor(index / 9)
         const col = index % 9
 
-        // Classe de base pour chaque cellule
-        let classes = 'w-[40px] h-[40px] flex items-center justify-center ' +
+        let classes =
+            'w-[40px] h-[40px] flex items-center justify-center ' +
             'text-md text-center ' +
-            'bg-gray-100 border border-gray-300'
+            'border border-gray-300 '
 
         // Bordures extérieures plus épaisses
         if (col === 0) classes += ' border-l-2'
@@ -21,13 +25,15 @@ function SudokuGrid({ puzzle, locked, isGameOver, handleChange }) {
         if (row === 8) classes += ' border-b-2'
 
         // Bordures internes pour séparer les 3x3
-        // (après la 3e et la 6e colonne, c’est-à-dire col = 3 ou 6)
         if (col === 3 || col === 6) {
-            classes += ' border-l-2 border-gray-900'
+            classes += ' border-l-2'
+        } else if (col === 2 || col === 5) {
+            classes += ' border-r-2'
         }
-        // (après la 3e et la 6e ligne, c’est-à-dire row = 3 ou 6)
         if (row === 3 || row === 6) {
-            classes += ' border-t-2 border-gray-900'
+            classes += ' border-t-2'
+        } else if (row === 2 || row === 5) {
+            classes += ' border-b-2'
         }
 
         return classes
@@ -37,8 +43,10 @@ function SudokuGrid({ puzzle, locked, isGameOver, handleChange }) {
         <div className="grid grid-cols-9 grid-rows-9 gap-1 w-fit">
             {puzzle.map((value, cellIndex) => {
                 const cellLocked = locked[cellIndex] || isGameOver
-                // On calcule ici les classes spéciales pour les bordures
                 const extraClasses = getBorderClasses(cellIndex)
+
+                const row = Math.floor(cellIndex / 9)
+                const col = cellIndex % 9
 
                 return (
                     <SudokuCell
@@ -47,6 +55,11 @@ function SudokuGrid({ puzzle, locked, isGameOver, handleChange }) {
                         locked={cellLocked}
                         onChange={(e) => handleChange(e, cellIndex)}
                         extraClasses={extraClasses}
+                        row={row}
+                        col={col}
+                        hoveredCell={hoveredCell}
+                        setHoveredCell={setHoveredCell}
+                        isGameOver={isGameOver}
                     />
                 )
             })}
