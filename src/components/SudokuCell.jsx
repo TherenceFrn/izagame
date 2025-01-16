@@ -48,7 +48,7 @@ function SudokuCell({
     }
 
     // Combine backgroundClass avec extraClasses (bordures, etc.)
-    const containerClasses = `${locked ? '' : 'bg-white' } ${extraClasses} ${backgroundClass}`
+    const containerClasses = `${locked ? '' : '' } ${extraClasses} ${backgroundClass}`
 
     // Si la case est locked => on affiche la valeur
     if (locked) {

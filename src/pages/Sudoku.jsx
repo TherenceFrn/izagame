@@ -1,119 +1,93 @@
-import { useState, useEffect } from 'react'
-import { useSearchParams } from 'react-router-dom'
-import sudoku from 'sudoku'
-import SudokuGrid from '../components/SudokuGrid' // exemple de composant
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { v4 as uuidv4 } from 'uuid'
+import { FaUser, FaUserAlt, FaUserCircle } from 'react-icons/fa'
 
 function Sudoku() {
-    const [searchParams] = useSearchParams()
-    // Si aucune difficulté n’est passée, on prend 1 par défaut
-    const difficultyFromUrl = searchParams.get('difficulty') || '1'
-    const initialDifficulty = parseInt(difficultyFromUrl, 10)
+    const navigate = useNavigate()
+    const [msg, setMsg] = useState('')
+    const [partyId, setPartyId] = useState('')
+    const [isPartyCreated, setIsPartyCreated] = useState(false)
 
-    // States
-    const [puzzle, setPuzzle] = useState([])
-    const [solution, setSolution] = useState([])
-    const [locked, setLocked] = useState([])
-    const [placedCount, setPlacedCount] = useState(0)
-    const [lives, setLives] = useState(3)
-    const [difficulty, setDifficulty] = useState(initialDifficulty)
-
-    useEffect(() => {
-        generateNewPuzzle(difficulty)
-        // eslint-disable-next-line
-    }, [])
-
-    const generateNewPuzzle = (difficultyLevel) => {
-        let puzzleBoard = null
-        for (let i = 0; i < 1000; i++) {
-            const tempPuzzle = sudoku.makepuzzle()
-            const tempRating = sudoku.ratepuzzle(tempPuzzle, 4)
-            if (tempRating === difficultyLevel) {
-                puzzleBoard = tempPuzzle
-                break
-            }
-        }
-        if (!puzzleBoard) {
-            puzzleBoard = sudoku.makepuzzle()
-        }
-        const rawSolution = sudoku.solvepuzzle(puzzleBoard)
-
-        const normalizedPuzzle = puzzleBoard.map((val) => (val === null ? 0 : val + 1))
-        const normalizedSolution = rawSolution.map((val) => val + 1)
-
-        const newLocked = normalizedPuzzle.map((val) => (val !== 0))
-        const initialCount = normalizedPuzzle.reduce(
-            (acc, cell) => (cell !== 0 ? acc + 1 : acc),
-            0
-        )
-
-        setPuzzle(normalizedPuzzle)
-        setSolution(normalizedSolution)
-        setLocked(newLocked)
-        setPlacedCount(initialCount)
-        setLives(3)
-        setDifficulty(difficultyLevel)
+    const handleCreateParty = () => {
+        // Génère un ID unique, ex: "144ed87e-..."
+        const newPartyId = uuidv4()
+        setPartyId(newPartyId)
+        setIsPartyCreated(true)
     }
 
-    const handleChange = (e, index) => {
-        const inputValue = e.target.value
-        if (!/^[1-9]$/.test(inputValue)) {
-            e.target.value = ''
-            return
-        }
-        const numberValue = parseInt(inputValue, 10)
-
-        if (numberValue === solution[index]) {
-            const newPuzzle = [...puzzle]
-            newPuzzle[index] = numberValue
-
-            const newLocked = [...locked]
-            newLocked[index] = true
-
-            setPuzzle(newPuzzle)
-            setLocked(newLocked)
-            setPlacedCount((prev) => prev + 1)
-        } else {
-            setLives((prev) => {
-                if (prev === 1) {
-                    alert('Game Over !')
-                }
-                return prev - 1
-            })
-        }
-        e.target.value = ''
+    const handleCopyLink = () => {
+        const link = `${window.location.origin}/party?id=${partyId}`
+        navigator.clipboard.writeText(link)
+        setMsg('Lien copié dans le presse-papier !')
     }
 
-    const isGameOver = lives <= 0
+    const handleStartParty = () => {
+        // Lorsque l’hôte décide de démarrer,
+        // on redirige vers la page de la partie
+        navigate(`/party?id=${partyId}`)
+    }
 
     return (
-        <div className="flex flex-col items-center mt-4">
-            <h1 className="text-xl text-gray-700 font-bold mb-2">
-                Sudoku (difficulté {difficulty})
-            </h1>
-            <div className="mb-4 text-red-600 font-semibold">Vies restantes : {lives}</div>
+        <div className="flex flex-col items-center mt-16">
+            <h1 className="text-2xl font-bold mb-4">Sudoku</h1>
 
-            {/* Grille Sudoku via un composant dédié */}
-            <SudokuGrid
-                puzzle={puzzle}
-                locked={locked}
-                isGameOver={isGameOver}
-                handleChange={handleChange}
-            />
+            {/*
+        Si la partie n'est pas encore créée, on propose de la créer.
+        Sinon, on affiche le lien d'invitation,
+        des icônes d'utilisateurs "fake", et un bouton pour lancer la partie.
+      */}
+            {!isPartyCreated ? (
+                <>
+                    <p className="mb-4">Créez une partie pour inviter vos amis.</p>
+                    <button
+                        onClick={handleCreateParty}
+                        className="px-4 py-2 bg-green-100 border border-green-300
+                       text-green-700 rounded hover:bg-green-200"
+                    >
+                        Créer une partie
+                    </button>
+                </>
+            ) : (
+                <>
+                    <p className="mb-2 font-semibold">Partie créée !</p>
+                    <div className="mb-4 text-center">
+                        Lien d'invitation :<br />
+                        <span className="text-blue-600 break-all">
+              {`${window.location.origin}/party?id=${partyId}`}
+            </span>
+                    </div>
 
-            {/* Stats */}
-            <div className="mt-4 text-gray-700">
-                Nombre de chiffres placés : <span className="font-bold">{placedCount}</span>
-            </div>
+                    <button
+                        onClick={handleCopyLink}
+                        className="px-4 py-2 bg-green-100 border border-green-300
+                       text-green-700 rounded hover:bg-green-200"
+                    >
+                        Copier le lien
+                    </button>
 
-            {/* Bouton pour regénérer un puzzle de la même difficulté */}
-            <div className="mt-4">
-                <button
-                    onClick={() => generateNewPuzzle(difficulty)}
-                    className="px-4 py-2 bg-green-100 border border-green-300 text-green-700 rounded hover:bg-green-200"
-                >
-                    Nouveau Sudoku
-                </button>
-            </div>
+                    {/* Icones fake (utilisateurs connectés) */}
+                    <div className="flex items-center gap-4 mt-6">
+                        <FaUser className="text-gray-700 w-6 h-6" />
+                        <FaUserAlt className="text-gray-700 w-6 h-6" />
+                        <FaUserCircle className="text-gray-700 w-6 h-6" />
+                        <FaUser className="text-gray-700 w-6 h-6" />
+                    </div>
+                    <p className="text-sm text-gray-500 mt-2">4 utilisateurs (fictifs) connectés</p>
+
+                    {/* Bouton pour “l’hôte” qui démarre réellement le jeu */}
+                    <button
+                        onClick={handleStartParty}
+                        className="mt-6 px-4 py-2 bg-blue-100 border border-blue-300
+                       text-blue-700 rounded hover:bg-blue-200"
+                    >
+                        Démarrer la partie
+                    </button>
+                </>
+            )}
+
+            {/* Affiche un message si on vient de cliquer sur "Copier le lien" */}
+            {msg && <p className="mt-2 text-red-500">{msg}</p>}
         </div>
     )
 }
