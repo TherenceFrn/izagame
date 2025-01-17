@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import sudoku from 'sudoku'
 import SudokuGrid from '../components/SudokuGrid'
 import PartyRanking from "../components/PartyRanking.jsx";
+import { motion } from 'framer-motion'
 
 function Party() {
     const [searchParams] = useSearchParams()
@@ -17,6 +18,9 @@ function Party() {
 
     // Nouvel état pour afficher ou non le classement final
     const [showRanking, setShowRanking] = useState(false)
+
+    // Quand on perds une vie
+    const [lifeShake, setLifeShake] = useState(false)
 
     useEffect(() => {
         generateNewPuzzle()
@@ -45,7 +49,7 @@ function Party() {
         setShowRanking(false) // On repasse en mode "jeu" si on relance
     }
 
-    const handleChange = (e, index) => {
+    const handleChange = (e, index, gridErrorCallback) => {
         const inputValue = e.target.value
         if (!/^[1-9]$/.test(inputValue)) {
             e.target.value = ''
@@ -71,6 +75,12 @@ function Party() {
             }
 
         } else {
+            // Mauvaise réponse => on déclenche l’animation
+            if (gridErrorCallback) {
+                gridErrorCallback()
+                handleLoseLife()
+            }
+
             // Mauvaise réponse
             setLives((prev) => {
                 if (prev === 1) {
@@ -98,13 +108,26 @@ function Party() {
         )
     }
 
+    const handleLoseLife = () => {
+        setLifeShake(true)
+        setTimeout(() => setLifeShake(false), 500)
+    }
+
     // Sinon, on affiche la grille Sudoku
     return (
         <div className="flex flex-col items-center mt-4">
             <h1 className="text-xl text-gray-700 font-bold mb-2">
                 Partie Sudoku - ID: {partyId}
             </h1>
-            <div className="mb-4 text-red-600 font-semibold">Vies restantes : {lives}</div>
+
+            <div className="mb-4 text-red-600 font-semibold">
+                <motion.span
+                    animate={lifeShake ? {scale: [1, 1.2, 1], color: '#f87171'} : {}}
+                    transition={{duration: 0.5}}
+                >
+                    Vies restantes : {lives}
+                </motion.span>
+            </div>
 
             <SudokuGrid
                 puzzle={puzzle}
