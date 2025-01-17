@@ -1,45 +1,59 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { v4 as uuidv4 } from 'uuid'
-import { FaUser, FaUserAlt, FaUserCircle } from 'react-icons/fa'
+import { FaUser, FaUserAlt } from 'react-icons/fa'
 
-function Sudoku() {
+function PartyLobby() {
     const navigate = useNavigate()
-    const [msg, setMsg] = useState('')
-    const [partyId, setPartyId] = useState('')
+    const [searchParams] = useSearchParams()
+
+    // On peut avoir ?game=sudoku&id=xxx
+    const gameParam = searchParams.get('game') || 'sudoku'
+    const idParam = searchParams.get('id') // potentiellement déjà créé ?
+
+    const [partyId, setPartyId] = useState(idParam || '')
     const [isPartyCreated, setIsPartyCreated] = useState(false)
+    const [msg, setMsg] = useState('')
+
+    useEffect(() => {
+        // Si on n'a pas d'id dans l'URL, on en génère un
+        if (!idParam) {
+            const newId = uuidv4()
+            setPartyId(newId)
+        } else {
+            setIsPartyCreated(true)
+            // on suppose qu'on a déjà un id => partie existante
+        }
+    }, [idParam])
 
     const handleCreateParty = () => {
-        // Génère un ID unique, ex: "144ed87e-..."
-        const newPartyId = uuidv4()
-        setPartyId(newPartyId)
+        if (!partyId) {
+            const newId = uuidv4()
+            setPartyId(newId)
+        }
         setIsPartyCreated(true)
     }
 
     const handleCopyLink = () => {
-        const link = `${window.location.origin}/party?id=${partyId}`
+        const link = `${window.location.origin}/lobby?game=${gameParam}&id=${partyId}`
         navigator.clipboard.writeText(link)
         setMsg('Lien copié dans le presse-papier !')
     }
 
     const handleStartParty = () => {
-        // Lorsque l’hôte décide de démarrer,
-        // on redirige vers la page de la partie
-        navigate(`/party?id=${partyId}`)
+        // On lance la partie => redirection vers /partyGame?game=xxx&id=xxx
+        navigate(`/partyGame?game=${gameParam}&id=${partyId}`)
     }
 
     return (
         <div className="flex flex-col items-center mt-16">
-            <h1 className="text-2xl font-bold mb-4">Sudoku</h1>
+            <h1 className="text-2xl font-bold mb-4">
+                Lobby pour le jeu : {gameParam.toUpperCase()}
+            </h1>
 
-            {/*
-        Si la partie n'est pas encore créée, on propose de la créer.
-        Sinon, on affiche le lien d'invitation,
-        des icônes d'utilisateurs "fake", et un bouton pour lancer la partie.
-      */}
             {!isPartyCreated ? (
                 <>
-                    <p className="mb-4">Créez une partie pour inviter vos amis.</p>
+                    <p className="mb-4">Créez ou rejoignez une partie pour inviter vos amis.</p>
                     <button
                         onClick={handleCreateParty}
                         className="px-4 py-2 bg-green-100 border border-green-300
@@ -50,11 +64,11 @@ function Sudoku() {
                 </>
             ) : (
                 <>
-                    <p className="mb-2 font-semibold">Partie créée !</p>
+                    <p className="mb-2 font-semibold">Partie ID : {partyId}</p>
                     <div className="mb-4 text-center">
                         Lien d'invitation :<br />
                         <span className="text-blue-600 break-all">
-              {`${window.location.origin}/party?id=${partyId}`}
+              {`${window.location.origin}/lobby?game=${gameParam}&id=${partyId}`}
             </span>
                     </div>
 
@@ -70,12 +84,12 @@ function Sudoku() {
                     <div className="flex items-center gap-4 mt-6">
                         <FaUser className="text-gray-700 w-6 h-6" />
                         <FaUserAlt className="text-gray-700 w-6 h-6" />
-                        <FaUserCircle className="text-gray-700 w-6 h-6" />
-                        <FaUser className="text-gray-700 w-6 h-6" />
                     </div>
-                    <p className="text-sm text-gray-500 mt-2">4 utilisateurs (fictifs) connectés</p>
+                    <p className="text-sm text-gray-500 mt-2">
+                        2 utilisateurs (fictifs) connectés
+                    </p>
 
-                    {/* Bouton pour “l’hôte” qui démarre réellement le jeu */}
+                    {/* Bouton pour l’hôte qui démarre la partie */}
                     <button
                         onClick={handleStartParty}
                         className="mt-6 px-4 py-2 bg-blue-100 border border-blue-300
@@ -86,10 +100,9 @@ function Sudoku() {
                 </>
             )}
 
-            {/* Affiche un message si on vient de cliquer sur "Copier le lien" */}
             {msg && <p className="mt-2 text-red-500">{msg}</p>}
         </div>
     )
 }
 
-export default Sudoku
+export default PartyLobby
