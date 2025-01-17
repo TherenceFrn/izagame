@@ -1,13 +1,17 @@
+// src/components/SudokuGrid.jsx
+import React from 'react'
 import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import SudokuCell from './SudokuCell'
 
-function SudokuGrid({ puzzle, locked, isGameOver, handleChange, onWrongInput }) {
+function SudokuGrid({ puzzle, locked, isGameOver, handleChange }) {
+    console.log('SudokuGrid received puzzle:', puzzle)
+    console.log('SudokuGrid received locked:', locked)
+
     // État pour la cellule en cours de survol (-1 = aucune)
     const [hoveredCell, setHoveredCell] = useState(-1)
 
     // État pour déclencher l’effet de flash (ou tremblement)
-    // onWrongInput (envoyé par le parent) appellera handleGridError() ci-dessous
     const [errorFlash, setErrorFlash] = useState(false)
 
     const handleGridError = () => {

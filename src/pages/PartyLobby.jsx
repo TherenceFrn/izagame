@@ -1,50 +1,52 @@
+// src/pages/PartyLobby.jsx
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { v4 as uuidv4 } from 'uuid'
 import { FaUser } from 'react-icons/fa'
-import { io } from 'socket.io-client'
-
-const socket = io('http://localhost:3000')
-// ou l'adresse de ton serveur
+import socket from '../socket' // Importer le socket singleton
 
 function PartyLobby() {
     const navigate = useNavigate()
     const [searchParams] = useSearchParams()
 
     const gameParam = searchParams.get('game') || 'sudoku'
-    const idParam = searchParams.get('id') // potentiellement déjà créé ?
+    const idParam = searchParams.get('id') || ''
 
-    const [partyId, setPartyId] = useState(idParam || '')
-    const [isPartyCreated, setIsPartyCreated] = useState(false)
+    const [partyId, setPartyId] = useState(idParam)
+    const [isPartyCreated, setIsPartyCreated] = useState(!!idParam)
     const [msg, setMsg] = useState('')
     const [players, setPlayers] = useState([]) // Liste réelle des joueurs dans le lobby
 
-    // On simule un username local
-    // On regarde si on a déjà un username dans localStorage
-    const existingUsername = localStorage.getItem('username')
-    if (!existingUsername) {
-        const newUsername = 'Player' + Math.floor(Math.random() * 1000)
+    const [username] = useState(() => {
+        const existing = localStorage.getItem('username')
+        if (existing) return existing
+        const newUsername = 'Player' + Math.floor(Math.random() * 1000) + '-' + uuidv4().slice(0, 4)
         localStorage.setItem('username', newUsername)
-    }
-    const [username, setUsername] = useState(localStorage.getItem('username'))
+        return newUsername
+    })
 
     // Flag pour éviter les doubles émissions
     const hasJoinedLobby = useRef(false)
 
     useEffect(() => {
-        // Écoute l'événement "lobbyState"
-        socket.on('lobbyState', (data) => {
+        // Gestion des événements du serveur
+        const handleLobbyState = (data) => {
+            console.log('Received lobbyState:', data.players)
             setPlayers(data.players || [])
-        })
+        }
 
-        // Écoute l'événement "partyStarted"
-        socket.on('partyStarted', (data) => {
-            navigate(`/partyGame?game=${gameParam}&id=${data.partyId}`)
-        })
+        const handlePartyStarted = (data) => {
+            console.log('Received partyStarted:', data)
+            // Naviguer vers PartyGame en passant les données du puzzle via l'état
+            navigate(`/partyGame?game=${gameParam}&id=${data.partyId}`, { state: { puzzle: data.puzzle, solution: data.solution } })
+        }
+
+        socket.on('lobbyState', handleLobbyState)
+        socket.on('partyStarted', handlePartyStarted)
 
         return () => {
-            socket.off('lobbyState')
-            socket.off('partyStarted')
+            socket.off('lobbyState', handleLobbyState)
+            socket.off('partyStarted', handlePartyStarted)
         }
     }, [gameParam, navigate])
 
@@ -53,16 +55,13 @@ function PartyLobby() {
             setPartyId(idParam)
             setIsPartyCreated(true)
 
-            // Émettre "joinLobby" une seule fois
-            socket.emit('joinLobby', { partyId: idParam, username })
-            console.log("Auto-join => joinLobby", idParam, username)
-
+            // Définir le flag avant d'émettre
             hasJoinedLobby.current = true
+            socket.emit('joinLobby', { partyId: idParam, username })
             console.log("Auto-join => joinLobby", idParam, username)
         }
     }, [idParam, username])
 
-    // 3) handleCreateParty => joinLobby
     const handleCreateParty = () => {
         if (isPartyCreated) {
             // Déjà dans un lobby, ne rien faire
@@ -79,13 +78,12 @@ function PartyLobby() {
         }
         setIsPartyCreated(true)
 
-        // Émettre "joinLobby" seulement si pas encore rejoint
+        // Définir le flag avant d'émettre
         if (!hasJoinedLobby.current) {
+            hasJoinedLobby.current = true
             socket.emit('joinLobby', { partyId: newPartyId, username })
             console.log("Created new lobby and joinLobby", newPartyId, username)
-            hasJoinedLobby.current = true
         }
-        console.log("Created new lobby and joinLobby", newPartyId, username)
     }
 
     const handleCopyLink = () => {
@@ -95,10 +93,8 @@ function PartyLobby() {
     }
 
     const handleStartParty = () => {
-        // On émet "startParty" => le serveur broadcast "partyStarted"
         socket.emit('startParty', { partyId })
-        // on pourrait naviguer direct, mais on veut que
-        // TOUT le monde reçoive l'info => see "partyStarted" in useEffect
+        console.log("Start party emitted for", partyId)
     }
 
     return (
@@ -113,7 +109,7 @@ function PartyLobby() {
                     <button
                         onClick={handleCreateParty}
                         className="px-4 py-2 bg-green-100 border border-green-300
-              text-green-700 rounded hover:bg-green-200"
+                          text-green-700 rounded hover:bg-green-200"
                     >
                         Créer/Rejoindre le lobby
                     </button>
@@ -125,23 +121,23 @@ function PartyLobby() {
                         Lien d'invitation :
                         <br />
                         <span className="text-blue-600 break-all">
-              {`${window.location.origin}/lobby?game=${gameParam}&id=${partyId}`}
-            </span>
+                            {`${window.location.origin}/lobby?game=${gameParam}&id=${partyId}`}
+                        </span>
                     </div>
 
                     <button
                         onClick={handleCopyLink}
                         className="px-4 py-2 bg-green-100 border border-green-300
-              text-green-700 rounded hover:bg-green-200"
+                          text-green-700 rounded hover:bg-green-200"
                     >
                         Copier le lien
                     </button>
 
-                    {/* Liste réelle des joueurs connectés */}
+                    {/* Liste des joueurs connectés */}
                     <div className="flex flex-col items-center gap-2 mt-6">
                         <div className="font-semibold">Joueurs connectés :</div>
                         {players.map((pl) => (
-                            <div key={pl.socketId} className="flex items-center gap-2">
+                            <div key={`${pl.socketId}-${pl.username}`} className="flex items-center gap-2">
                                 <FaUser className="text-gray-700 w-4 h-4" />
                                 <span>{pl.username}</span>
                             </div>
@@ -154,7 +150,7 @@ function PartyLobby() {
                     <button
                         onClick={handleStartParty}
                         className="mt-6 px-4 py-2 bg-blue-100 border border-blue-300
-              text-blue-700 rounded hover:bg-blue-200"
+                          text-blue-700 rounded hover:bg-blue-200"
                     >
                         Démarrer la partie
                     </button>

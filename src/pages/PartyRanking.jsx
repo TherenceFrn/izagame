@@ -1,7 +1,8 @@
-import { useSearchParams } from 'react-router-dom'
+// src/pages/PartyRanking.jsx
+import React from 'react'
 
 function PartyRanking({ partyId, scoreboard = [], currentUser, onRematch }) {
-    // On trie le scoreboard du plus grand placedCount au plus petit
+    // Trier le classement du plus grand placedCount au plus petit
     const sortedScoreboard = [...scoreboard].sort((a, b) => b.placedCount - a.placedCount)
 
     return (
@@ -25,11 +26,11 @@ function PartyRanking({ partyId, scoreboard = [], currentUser, onRematch }) {
                         const isCurrent = player.username === currentUser
                         return (
                             <tr
-                                key={player.username}
+                                key={`${player.username}-${index}`}
                                 className={`
-                    border-b border-gray-300 
-                    ${isCurrent ? 'bg-green-100 font-semibold' : 'hover:bg-gray-100'}
-                  `}
+                                        border-b border-gray-300 
+                                        ${isCurrent ? 'bg-green-100 font-semibold' : 'hover:bg-gray-100'}
+                                    `}
                             >
                                 <td className="px-3 py-2 border-r border-gray-300 text-center">
                                     {index + 1}
