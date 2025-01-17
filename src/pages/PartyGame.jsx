@@ -1,15 +1,19 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
+import { io } from 'socket.io-client'
 import sudoku from 'sudoku'
 import SudokuGrid from '../components/SudokuGrid'
 import PartyRanking from './PartyRanking'  // ou '../components/PartyRanking'
 import { motion } from 'framer-motion'
+
+const socket = io('http://localhost:3000')
 
 function PartyGame() {
     const navigate = useNavigate()
     const [searchParams] = useSearchParams()
     const gameParam = searchParams.get('game') || 'sudoku'
     const partyId = searchParams.get('id') || ''
+    const [username, setUsername] = useState('Player'+Math.floor(Math.random()*1000))
 
     // Ex. Si le jeu n’est pas "sudoku", on pourrait afficher autre chose
     // Pour l’instant, on se concentre sur Sudoku
@@ -20,13 +24,28 @@ function PartyGame() {
     const [lives, setLives] = useState(3)
     const [showRanking, setShowRanking] = useState(false)
     const [lifeShake, setLifeShake] = useState(false)
+    const [scoreboard, setScoreboard] = useState({}) // pour stocker data de partyFinished
 
     useEffect(() => {
-        if (gameParam === 'sudoku') {
-            generateNewPuzzle()
+        // 1) Se connecter à la room
+        socket.emit('joinParty', { partyId, username })
+
+        // 2) Ecouter l'événement "partyFinished"
+        socket.on('partyFinished', (data) => {
+            // data = partyData[partyId] => ex.: { "Bob": { placedCount, lives, finished }, ... }
+            setScoreboard(data)
+            setShowRanking(true)
+        })
+
+        // 3) Charger/générer Sudoku local
+        generateNewPuzzle()
+
+        // Cleanup : remove listener quand on démonte le composant
+        return () => {
+            socket.off('partyFinished')
         }
         // eslint-disable-next-line
-    }, [gameParam])
+    }, [])
 
     const generateNewPuzzle = () => {
         const puzzleBoard = sudoku.makepuzzle()
@@ -53,7 +72,12 @@ function PartyGame() {
         }
         const numberValue = parseInt(inputValue, 10)
 
+        // Variables locales pour stocker la nouvelle valeur
+        let newPlacedCount = placedCount
+        let newLives = lives
+
         if (numberValue === solution[index]) {
+            // ----- Réponse correcte -----
             const newPuzzle = [...puzzle]
             newPuzzle[index] = numberValue
 
@@ -62,25 +86,59 @@ function PartyGame() {
 
             setPuzzle(newPuzzle)
             setLocked(newLocked)
-            setPlacedCount((prev) => prev + 1)
 
-            if (placedCount + 1 === 81) {
+            // On incrémente localement
+            newPlacedCount = placedCount + 1
+            setPlacedCount(newPlacedCount)
+
+            // Si on a rempli toutes les cases => partie terminée
+            if (newPlacedCount === 81) {
                 setShowRanking(true)
+                // Émettre l'événement "playerFinish"
+                socket.emit('playerFinish', {
+                    partyId,
+                    username,
+                    placedCount: newPlacedCount,
+                    lives: newLives,
+                })
             }
+
         } else {
+            // ----- Réponse incorrecte -----
             if (gridErrorCallback) {
-                gridErrorCallback()
+                gridErrorCallback() // (ex: animation de grille)
                 handleLoseLife()
             }
 
-            setLives((prev) => {
-                if (prev === 1) {
-                    setShowRanking(true)
-                }
-                return prev - 1
-            })
+            // Si on tombe à 0 vie => fin de partie pour ce joueur
+            if (lives === 1) {
+                setShowRanking(true)
+                // signale au serveur qu'on a fini (même si c'est "game over")
+                socket.emit('playerFinish', {
+                    partyId,
+                    username,
+                    placedCount,
+                    lives: 0,
+                })
+                newLives = 0
+            } else {
+                newLives = lives - 1
+            }
+            setLives(newLives)
         }
+
+        // On vide le champ
         e.target.value = ''
+
+        // ----- Envoi d'un "playerUpdate" après chaque action -----
+        // On transmet les valeurs locales (newPlacedCount, newLives) pour être sûr
+        // qu’elles correspondent à l’état mis à jour.
+        socket.emit('playerUpdate', {
+            partyId,
+            username,
+            placedCount: newPlacedCount,
+            lives: newLives,
+        })
     }
 
     const handleLoseLife = () => {
@@ -88,20 +146,18 @@ function PartyGame() {
         setTimeout(() => setLifeShake(false), 500)
     }
 
-    // On simule un scoreboard
-    const scoreboard = [
-        { username: 'Bob', placedCount: placedCount, lives },
-        { username: 'Alice', placedCount: 50, lives: 1 },
-        { username: 'Charlie', placedCount: 20, lives: 0 },
-    ]
-
     if (showRanking) {
+        const scoreboardArray = Object.keys(scoreboard).map((u) => ({
+            username: u,
+            placedCount: scoreboard[u].placedCount,
+            lives: scoreboard[u].lives,
+        }))
         // On peut afficher le PartyRanking ici,
         // ou naviguer vers /partyRanking?game=sudoku&id=xxx
         return (
             <PartyRanking
                 partyId={partyId}
-                scoreboard={scoreboard}
+                scoreboard={scoreboardArray}
                 currentUser={'Bob'}  // ex. le joueur actuel
                 onRematch={generateNewPuzzle}
             />
