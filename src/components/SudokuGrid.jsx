@@ -5,8 +5,8 @@ import { motion } from 'framer-motion'
 import SudokuCell from './SudokuCell'
 
 function SudokuGrid({ puzzle, locked, isGameOver, handleChange }) {
-    console.log('SudokuGrid received puzzle:', puzzle)
-    console.log('SudokuGrid received locked:', locked)
+    //console.log('SudokuGrid received puzzle:', puzzle)
+    //console.log('SudokuGrid received locked:', locked)
 
     // État pour la cellule en cours de survol (-1 = aucune)
     const [hoveredCell, setHoveredCell] = useState(-1)

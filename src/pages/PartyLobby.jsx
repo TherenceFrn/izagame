@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { v4 as uuidv4 } from 'uuid'
-import { FaUser } from 'react-icons/fa'
+import { FaUser, FaSmile, FaMeh, FaFrown, FaSkull } from 'react-icons/fa' // Importer les icônes
 import socket from '../socket' // Importer le socket singleton
 
 function PartyLobby() {
@@ -25,6 +25,9 @@ function PartyLobby() {
         return newUsername
     })
 
+    // Sélection de la difficulté (par défaut: Moyenne)
+    const [difficulty, setDifficulty] = useState('medium')
+
     // Flag pour éviter les doubles émissions
     const hasJoinedLobby = useRef(false)
 
@@ -38,7 +41,7 @@ function PartyLobby() {
         const handlePartyStarted = (data) => {
             console.log('Received partyStarted:', data)
             // Naviguer vers PartyGame en passant les données du puzzle via l'état
-            navigate(`/partyGame?game=${gameParam}&id=${data.partyId}`, { state: { puzzle: data.puzzle, solution: data.solution } })
+            navigate(`/partyGame?game=${gameParam}&id=${data.partyId}`, { state: { puzzle: data.puzzle, solution: data.solution, difficulty } })
         }
 
         socket.on('lobbyState', handleLobbyState)
@@ -48,7 +51,7 @@ function PartyLobby() {
             socket.off('lobbyState', handleLobbyState)
             socket.off('partyStarted', handlePartyStarted)
         }
-    }, [gameParam, navigate])
+    }, [gameParam, navigate, difficulty])
 
     useEffect(() => {
         if (idParam && !hasJoinedLobby.current) {
@@ -93,12 +96,12 @@ function PartyLobby() {
     }
 
     const handleStartParty = () => {
-        socket.emit('startParty', { partyId })
-        console.log("Start party emitted for", partyId)
+        socket.emit('startParty', { partyId, difficulty }) // Inclure la difficulté
+        console.log("Start party emitted for", partyId, "with difficulty", difficulty)
     }
 
     return (
-        <div className="flex flex-col items-center mt-16">
+        <div className="flex flex-col items-center mt-16 p-4">
             <h1 className="text-2xl font-bold mb-4">
                 Lobby pour le jeu : {gameParam.toUpperCase()}
             </h1>
@@ -116,6 +119,72 @@ function PartyLobby() {
                 </>
             ) : (
                 <>
+                    {/* Sélection de la difficulté */}
+                    <div className="mb-6 w-full max-w-md">
+                        <h2 className="text-xl font-semibold mb-2">Choisissez la difficulté :</h2>
+                        <div className="w-full flex space-x-2 items-center justify-between">
+                            {/* Easy */}
+                            <label className="flex items-center cursor-pointer">
+                                <input
+                                    type="radio"
+                                    name="difficulty"
+                                    value="easy"
+                                    checked={difficulty === 'easy'}
+                                    onChange={() => setDifficulty('easy')}
+                                    className="hidden"
+                                />
+                                <span
+                                    className={`flex items-center px-4 py-2 rounded-md border 
+                                    ${difficulty === 'easy' ? 'bg-blue-200 border-blue-500' : 'bg-white border-gray-300'}
+                                    transition-colors duration-200`}
+                                >
+                                    <FaMeh className="mr-2 text-blue-600" />
+                                    Facile
+                                </span>
+                            </label>
+
+                            {/* Medium */}
+                            <label className="flex items-center cursor-pointer">
+                                <input
+                                    type="radio"
+                                    name="difficulty"
+                                    value="medium"
+                                    checked={difficulty === 'medium'}
+                                    onChange={() => setDifficulty('medium')}
+                                    className="hidden"
+                                />
+                                <span
+                                    className={`flex items-center px-4 py-2 rounded-md border 
+                                    ${difficulty === 'medium' ? 'bg-yellow-200 border-yellow-500' : 'bg-white border-gray-300'}
+                                    transition-colors duration-200`}
+                                >
+                                    <FaMeh className="mr-2 text-yellow-600" />
+                                    Moyenne
+                                </span>
+                            </label>
+
+                            {/* Hard */}
+                            <label className="flex items-center cursor-pointer">
+                                <input
+                                    type="radio"
+                                    name="difficulty"
+                                    value="hard"
+                                    checked={difficulty === 'hard'}
+                                    onChange={() => setDifficulty('hard')}
+                                    className="hidden"
+                                />
+                                <span
+                                    className={`flex items-center px-4 py-2 rounded-md border 
+                                    ${difficulty === 'hard' ? 'bg-red-200 border-red-500' : 'bg-white border-gray-300'}
+                                    transition-colors duration-200`}
+                                >
+                                    <FaFrown className="mr-2 text-red-600" />
+                                    Difficile
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+
                     <p className="mb-2 font-semibold">Partie ID : {partyId}</p>
                     <div className="mb-4 text-center">
                         Lien d'invitation :
@@ -134,7 +203,7 @@ function PartyLobby() {
                     </button>
 
                     {/* Liste des joueurs connectés */}
-                    <div className="flex flex-col items-center gap-2 mt-6">
+                    <div className="flex flex-col items-center gap-2 mt-6 w-full max-w-md">
                         <div className="font-semibold">Joueurs connectés :</div>
                         {players.map((pl) => (
                             <div key={`${pl.socketId}-${pl.username}`} className="flex items-center gap-2">

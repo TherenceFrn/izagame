@@ -48,9 +48,7 @@ function PartyGame() {
         } else {
             // Si aucune donnée n'est passée via navigation, écouter l'événement 'partyStarted'
             const handlePartyStarted = (data) => {
-                console.log('Received partyStarted TESTTTT:', data)
-                console.log('Type of puzzle:', typeof data.puzzle)
-                console.log('Is puzzle an array:', Array.isArray(data.puzzle))
+                console.log('Received partyStarted:', data)
                 setPuzzle(data.puzzle)
                 setSolution(data.solution)
                 setLocked(data.puzzle.map(val => val !== 0))
@@ -75,11 +73,11 @@ function PartyGame() {
             socket.on('partyStarted', handlePartyStarted)
             socket.on('partyFinished', handlePartyFinished)
 
-            // Émettre 'joinParty' seulement si les données n'ont pas été reçues via navigation
+            // Émettre 'joinLobby' seulement si les données n'ont pas été reçues via navigation
             if (partyId && !hasJoinedParty.current) {
                 hasJoinedParty.current = true
-                socket.emit('joinParty', { partyId, username })
-                console.log("Auto-join => joinParty", partyId, username)
+                socket.emit('joinLobby', { partyId, username })
+                console.log("Auto-join => joinLobby", partyId, username)
             }
 
             // Nettoyer les écouteurs lors du démontage
@@ -186,7 +184,7 @@ function PartyGame() {
                 currentUser={username}  // Utiliser le username actuel
                 onRematch={() => {
                     // Relancer la partie en demandant au serveur de générer un nouveau Sudoku
-                    socket.emit('startParty', { partyId })
+                    socket.emit('startParty', { partyId, difficulty: location.state?.difficulty || 'medium' })
                 }}
             />
         )
