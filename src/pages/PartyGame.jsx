@@ -1,6 +1,6 @@
 // src/pages/PartyGame.jsx
 import { useState, useEffect, useRef } from 'react'
-import { useSearchParams, useLocation } from 'react-router-dom' // Importer useLocation
+import { useSearchParams, useLocation } from 'react-router-dom'
 import { v4 as uuidv4 } from 'uuid'
 import socket from '../socket' // Importer le socket singleton
 import SudokuGrid from '../components/SudokuGrid'
@@ -9,7 +9,7 @@ import { motion } from 'framer-motion'
 import NumberFrequencyCard from "../components/NumberFrequencyCard.jsx";
 
 function PartyGame() {
-    const location = useLocation() // Utiliser useLocation pour accéder à l'état
+    const location = useLocation()
     const [searchParams] = useSearchParams()
     const gameParam = searchParams.get('game') || 'sudoku'
     const partyId = searchParams.get('id') || ''
@@ -29,7 +29,7 @@ function PartyGame() {
     const [lives, setLives] = useState(3)
     const [showRanking, setShowRanking] = useState(false)
     const [lifeShake, setLifeShake] = useState(false)
-    const [scoreboard, setScoreboard] = useState({})
+    const [scoreboard, setScoreboard] = useState([]) // Initialiser comme tableau
 
     // Flag pour éviter les doubles émissions
     const hasJoinedParty = useRef(false)
@@ -63,9 +63,14 @@ function PartyGame() {
                 console.log('Locked:', data.puzzle.map(val => val !== 0))
             }
 
-            const handlePartyFinished = (scoreboard) => {
-                console.log('Received partyFinished:', scoreboard)
-                setScoreboard(scoreboard)
+            const handlePartyFinished = (data) => {
+                console.log('Received partyFinished:', data)
+                if (data.scoreboard && Array.isArray(data.scoreboard)) {
+                    setScoreboard(data.scoreboard)
+                } else {
+                    console.error('Scoreboard reçu invalide:', data.scoreboard)
+                    setScoreboard([])
+                }
                 setShowRanking(true)
             }
 
