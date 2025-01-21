@@ -6,6 +6,7 @@ import socket from '../socket' // Importer le socket singleton
 import SudokuGrid from '../components/SudokuGrid'
 import PartyRanking from './PartyRanking'
 import { motion } from 'framer-motion'
+import NumberFrequencyCard from "../components/NumberFrequencyCard.jsx";
 
 function PartyGame() {
     const location = useLocation() // Utiliser useLocation pour accéder à l'état
@@ -175,6 +176,12 @@ function PartyGame() {
         setTimeout(() => setLifeShake(false), 500)
     }
 
+    // Calculer la fréquence des chiffres placés
+    const numberFrequency = puzzle.reduce((acc, val) => {
+        if (val !== 0) acc[val] = (acc[val] || 0) + 1
+        return acc
+    }, {})
+
     if (showRanking) {
         return (
             <PartyRanking
@@ -220,8 +227,20 @@ function PartyGame() {
                 handleChange={handleChange}
             />
 
-            <div className="mt-4 text-gray-700">
-                Nombre de chiffres placés : <span className="font-bold">{placedCount}</span>
+            {/* Nouvelle Section : Grille des Chiffres avec Indicateurs */}
+            <div className="mb-6 grid grid-cols-9 gap-2">
+                {Array.from({ length: 9 }, (_, i) => i + 1).map((number) => {
+                    const count = numberFrequency[number] || 0
+                    const isCompleted = count === 9
+                    return (
+                        <NumberFrequencyCard
+                            key={number}
+                            number={number}
+                            count={count}
+                            isCompleted={isCompleted}
+                        />
+                    )
+                })}
             </div>
 
             <button
