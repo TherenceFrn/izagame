@@ -1,8 +1,8 @@
-// src/pages/PartyLobby.jsx
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { v4 as uuidv4 } from 'uuid'
-import { FaUser, FaSmile, FaMeh, FaFrown, FaSkull } from 'react-icons/fa' // Importer les icônes
+import { FaUser, FaMeh, FaFrown } from 'react-icons/fa' // Importer les icônes
+import { ClipLoader } from 'react-spinners' // Importer le spinner
 import socket from '../socket' // Importer le socket singleton
 
 function PartyLobby() {
@@ -28,6 +28,9 @@ function PartyLobby() {
     // Sélection de la difficulté (par défaut: Moyenne)
     const [difficulty, setDifficulty] = useState('medium')
 
+    // Indicateur de chargement
+    const [isLoading, setIsLoading] = useState(false)
+
     // Flag pour éviter les doubles émissions
     const hasJoinedLobby = useRef(false)
 
@@ -40,6 +43,7 @@ function PartyLobby() {
 
         const handlePartyStarted = (data) => {
             console.log('Received partyStarted:', data)
+            setIsLoading(false) // Désactiver le chargement
             // Naviguer vers PartyGame en passant les données du puzzle via l'état
             navigate(`/partyGame?game=${gameParam}&id=${data.partyId}`, { state: { puzzle: data.puzzle, solution: data.solution, difficulty } })
         }
@@ -96,6 +100,7 @@ function PartyLobby() {
     }
 
     const handleStartParty = () => {
+        setIsLoading(true) // Activer le chargement
         socket.emit('startParty', { partyId, difficulty }) // Inclure la difficulté
         console.log("Start party emitted for", partyId, "with difficulty", difficulty)
     }
@@ -216,19 +221,28 @@ function PartyLobby() {
                         {players.length} joueur(s) connectés
                     </p>
 
-                    <button
-                        onClick={handleStartParty}
-                        className="mt-6 px-4 py-2 bg-blue-100 border border-blue-300
-                          text-blue-700 rounded hover:bg-blue-200"
-                    >
-                        Démarrer la partie
-                    </button>
+                    {/* Afficher le spinner si en cours de chargement */}
+                    {isLoading ? (
+                        <div className="mt-6 flex flex-col items-center">
+                            <ClipLoader color="#3b82f6" loading={isLoading} size={50} />
+                            <p className="mt-2 text-blue-600">Démarrage de la partie, veuillez patienter...</p>
+                        </div>
+                    ) : (
+                        <button
+                            onClick={handleStartParty}
+                            className="mt-6 px-4 py-2 bg-blue-100 border border-blue-300
+                              text-blue-700 rounded hover:bg-blue-200"
+                        >
+                            Démarrer la partie
+                        </button>
+                    )}
                 </>
             )}
 
             {msg && <p className="mt-2 text-red-500">{msg}</p>}
         </div>
     )
+
 }
 
 export default PartyLobby
