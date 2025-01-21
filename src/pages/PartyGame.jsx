@@ -1,6 +1,6 @@
 // src/pages/PartyGame.jsx
 import { useState, useEffect, useRef } from 'react'
-import { useSearchParams, useNavigate, useLocation } from 'react-router-dom' // Importer useLocation
+import { useSearchParams, useLocation } from 'react-router-dom' // Importer useLocation
 import { v4 as uuidv4 } from 'uuid'
 import socket from '../socket' // Importer le socket singleton
 import SudokuGrid from '../components/SudokuGrid'
@@ -8,7 +8,6 @@ import PartyRanking from './PartyRanking'
 import { motion } from 'framer-motion'
 
 function PartyGame() {
-    const navigate = useNavigate()
     const location = useLocation() // Utiliser useLocation pour accéder à l'état
     const [searchParams] = useSearchParams()
     const gameParam = searchParams.get('game') || 'sudoku'
@@ -224,15 +223,6 @@ function PartyGame() {
             <div className="mt-4 text-gray-700">
                 Nombre de chiffres placés : <span className="font-bold">{placedCount}</span>
             </div>
-
-            {/* Désactiver le bouton 'Nouveau Puzzle' car le serveur contrôle le Sudoku */}
-            <button
-                onClick={() => {}}
-                className="mt-4 px-4 py-2 bg-green-100 border border-green-300 text-green-700 rounded hover:bg-green-200"
-                disabled={true}
-            >
-                Nouveau Puzzle
-            </button>
 
             <button
                 onClick={() => {
